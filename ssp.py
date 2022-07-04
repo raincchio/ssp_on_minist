@@ -106,7 +106,6 @@ class SSP(object):
 
         if sampledata:
             grad_groupslist = []
-            count = 0
             train_loader = torch.utils.data.DataLoader(dataset, **train_kwargs)
             for batch_idx, (data, target) in enumerate(train_loader):
 
@@ -117,10 +116,10 @@ class SSP(object):
                 loss.backward()
                 grad_groupslist.append(self.getGrad(optimizer))
 
-                if count>samplesize:
+                if len(grad_groupslist)==samplesize:
                     break
-                count+=1
-            assert len(grad_groupslist) == buffersize, "error, check count variable"
+
+            assert len(grad_groupslist) == samplesize, "error, check count variable"
 
             for grad_groups in grad_groupslist[:-1]:
                 for gidx, grad_group in enumerate(grad_groups):
@@ -148,7 +147,7 @@ class SSP(object):
 
 
         with torch.no_grad():
-            if epoch < buffersize:
+            if epoch <= buffersize:
                 self.Buffer1.append([params, truth_grads])
             else:
                 self.Buffer2.append([params, truth_grads])
@@ -162,8 +161,10 @@ class SSP(object):
                 alpha = U.check_value(numerator, denominator)
 
                 # update parameters
-                for i, param in enumerate(params):
-                    param.add_(-alpha[i]*grads[i])
+                # for pg in zipparams:
+                for idx_pg in range(len(params)):
+                    for i, param in enumerate(params[idx_pg]):
+                        param.add_(-alpha[idx_pg][i]*grads[idx_pg][i])
 
                 self.Buffer1 = self.Buffer2 + []
                 self.Buffer2.clear()

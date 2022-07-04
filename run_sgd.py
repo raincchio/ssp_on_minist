@@ -19,6 +19,9 @@ def train(args, model, device, train_loader, optimizer, epoch):
         loss = F.nll_loss(output, target)
         loss.backward()
 
+        if batch_idx==20:
+            return '1'
+
         optimizer.step()
         losses.append(loss.item)
         if batch_idx % args.log_interval == 0:
@@ -38,9 +41,9 @@ def main():
                         help='input batch size for training (default: 64)')
     parser.add_argument('--test-batch-size', type=int, default=1000, metavar='N',
                         help='input batch size for testing (default: 1000)')
-    parser.add_argument('--epochs', type=int, default=1, metavar='N',
+    parser.add_argument('--epochs', type=int, default=20, metavar='N',
                         help='number of epochs to train (default: 14)')
-    parser.add_argument('--lr', type=float, default=1.0, metavar='LR',
+    parser.add_argument('--lr', type=float, default=1e-3, metavar='LR',
                         help='learning rate (default: 1.0)')
     parser.add_argument('--gamma', type=float, default=0.7, metavar='M',
                         help='Learning rate step gamma (default: 0.7)')
@@ -52,8 +55,8 @@ def main():
                         help='how many batches to wait before logging training status')
 
     args = parser.parse_args()
-    # use_cuda = not args.no_cuda and torch.cuda.is_available()
-    use_cuda = False
+    use_cuda = not args.no_cuda and torch.cuda.is_available()
+    # use_cuda = False
 
     torch.manual_seed(args.seed)
 
@@ -62,7 +65,7 @@ def main():
     train_kwargs = {'batch_size': args.batch_size}
     test_kwargs = {'batch_size': args.test_batch_size}
     if use_cuda:
-        cuda_kwargs = {'num_workers': 1,
+        cuda_kwargs = {'num_workers': 0,
                        'pin_memory': True,
                        'shuffle': True}
         train_kwargs.update(cuda_kwargs)
@@ -78,7 +81,7 @@ def main():
     train_loader = torch.utils.data.DataLoader(dataset,**train_kwargs)
 
     model = Net().to(device)
-    optimizer = optim.Adam(model.parameters(), lr=args.lr)
+    optimizer = optim.SGD(model.parameters(), lr=args.lr)
     # optimizer = optim.Adadelta(model.parameters(), lr=args.lr)
 
     scheduler = StepLR(optimizer, step_size=1, gamma=args.gamma)
@@ -86,7 +89,7 @@ def main():
     for epoch in range(1, args.epochs + 1):
         loss_ = train(args, model, device, train_loader, optimizer, epoch)
         loss.extend(loss_)
-        scheduler.step()
+        # scheduler.step()
     with open('sgd_loss','w+') as f:
         f.write(str(loss))
 

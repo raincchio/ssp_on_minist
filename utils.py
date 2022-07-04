@@ -7,32 +7,57 @@ from typing import List, Optional
 
 
 def compute_numer(B1, B2):
-    tmp_ = {}
-    for i, pa in enumerate(B1):
-        pb = B2[i]
-        for j, param in enumerate(pa[0]):
-            if j in tmp_.keys():
-                tmp_[j] += pa[1][j]*(param-pb[0][j])
-            else:
-                tmp_[j] = pa[1][j]*(param-pb[0][j])
-    return tmp_
+    result = []
+
+    for pg in B1[0][0]:
+        pg_ = []
+        for para in pg:
+            pg_.append(torch.zeros_like(para))
+        result.append(pg_)
+
+    for idx in range(len(B1)):
+        # param index is 0, param is coompose by group
+        for idx_pg in range(len(B1[idx][0])): # only one dimension
+            for idx_param, param in enumerate(B1[idx][0][idx_pg]):
+                result[idx_pg][idx_param] += B1[idx][1][idx_pg][idx_param]*(param-B2[idx][0][idx_pg][idx_param])
+
+    return result
 
 def compute_denom(B1):
-    tmp_ = {}
-    for i, pa in enumerate(B1):
-        for j, grad in enumerate(pa[1]):
-            if j in tmp_.keys():
-                tmp_[j] += grad * grad
-            else:
-                tmp_[j] = grad * grad
-    return tmp_
+    result = []
+    for pg in B1[0][0]:
+        pg_ = []
+        for para in pg:
+            pg_.append(torch.zeros_like(para))
+        result.append(pg_)
+
+    for param_grad_data in B1:
+        for idx_pg, grad_group in enumerate(param_grad_data[1]):  # only one dimension
+            for idx_grad, grad in enumerate(grad_group):
+                result[idx_pg][idx_grad] += grad * grad
+
+    return result
 
 def check_value(nu,de):
-    for i in range(len(de)):
-        fmask = (de[i]==0)
-        de[i][fmask] = 1
-        nu[i][fmask] = 0
-        nu[i] = nu[i]/de[i]
+    # result = torch.zeros_like(nu)
+    for idx_pg in range(len(nu)):
+        for idx in range(len(nu[idx_pg])):
+            fmask= (de[idx_pg][idx]==0)
+            de[idx_pg][idx][fmask] = 1
+            nu[idx_pg][idx][fmask] = 0
+            nu[idx_pg][idx] /= de[idx_pg][idx]
+    # for nu_g, de_g in zip(nu,de):
+    #     for nu_item, de_item in zip(nu_g, de_g):
+    #         fmask = (de_item == 0)
+    #         de_item[fmask] = 1
+    #         nu_item[fmask] = 0
+    #         nu_item = nu_item / de_item
+
+    # for i in range(len(de)):
+    #     fmask = (de[i]==0)
+    #     de[i][fmask] = 1
+    #     nu[i][fmask] = 0
+    #     nu[i] = nu[i]/de[i]
         # print(max(nu[i]), min(nu[i]))
     return nu
 
