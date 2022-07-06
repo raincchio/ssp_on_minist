@@ -20,10 +20,6 @@ def train(args, model, device, dataset, train_kwargs, optimizer, epoch):
         loss = F.nll_loss(output, target)
         loss.backward()
         optimizer.step()
-
-        if batch_idx==20:
-            break
-
         losses.append(loss.item())
         # if batch_idx % args.log_interval == 0:
         #     print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
@@ -53,6 +49,7 @@ def main():
                         help='how many batches to wait before logging training status')
 
     args = parser.parse_args()
+    print(args)
     use_cuda = not args.no_cuda and torch.cuda.is_available()
     # use_cuda = False
 
@@ -63,7 +60,7 @@ def main():
     train_kwargs = {'batch_size': args.batch_size}
     test_kwargs = {'batch_size': args.test_batch_size}
     if use_cuda:
-        cuda_kwargs = {'num_workers': 0,
+        cuda_kwargs = {'num_workers': 1,
                        'pin_memory': True,
                        'shuffle': True}
         train_kwargs.update(cuda_kwargs)
@@ -92,9 +89,9 @@ def main():
             epoch,loss_[-1]))
 
         loss.extend(loss_)
-        # ssp.step_with_truth_gradient(model, device, dataset, train_kwargs, optimizer, epoch, buffersize=3, sampledata=True, samplesize=4)
-        # scheduler.step()
-    with open('ssp_in_epoch_loss','w+') as f:
+        # ssp.step_with_true_gradient(model, device, dataset, train_kwargs, optimizer, epoch, buffersize=3, sampledata=True, samplesize=4)
+        scheduler.step()
+    with open('loss/ssp_in_epoch_loss','w+') as f:
         f.write(str(loss))
 
 

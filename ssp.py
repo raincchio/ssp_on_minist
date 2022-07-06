@@ -99,7 +99,7 @@ class SSP(object):
         return loss
 
 
-    def step_with_truth_gradient(self, model, device, dataset, train_kwargs, optimizer, epoch, buffersize=2, sampledata=False, samplesize=2):
+    def step_with_true_gradient(self, model, device, dataset, train_kwargs, optimizer, epoch, buffersize=2, sampledata=False, samplesize=2):
         # one step sgd
         params = self.getWeight(optimizer)
         grads = self.getGrad(optimizer)

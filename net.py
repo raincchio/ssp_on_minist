@@ -2,7 +2,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch
 
-class Net(nn.Module):
+class CovNet(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
         self.conv1 = nn.Conv2d(1, 32, 3, 1)
@@ -24,5 +24,27 @@ class Net(nn.Module):
         x = F.relu(x)
         x = self.dropout2(x)
         x = self.fc2(x)
+        output = F.log_softmax(x, dim=1)
+        return output
+
+class FCNet(nn.Module):
+    def __init__(self):
+        super(FCNet, self).__init__()
+
+        self.dropout1 = nn.Dropout(0.25)
+        self.dropout2 = nn.Dropout(0.5)
+        self.fc1 = nn.Linear(784, 1000)
+        self.fc2 = nn.Linear(1000, 1000)
+        self.fc3 = nn.Linear(1000, 10)
+
+    def forward(self, x):
+        x = torch.flatten(x, 1)
+        x = self.fc1(x)
+        x = F.relu(x)
+        x = self.dropout1(x)
+        x = self.fc2(x)
+        x = F.relu(x)
+        x = self.dropout2(x)
+        x = self.fc3(x)
         output = F.log_softmax(x, dim=1)
         return output
