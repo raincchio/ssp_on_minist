@@ -174,6 +174,7 @@ class SSP(object):
 
                 self.Buffer1 = self.Buffer2 + []
                 self.Buffer2.clear()
+        # return F.nll_loss(output, target)
 
     def step_with_exp_average_gradient(self, batch_idx, optimizer, buffersize=2):
         # one step sgd

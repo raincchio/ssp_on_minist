@@ -89,7 +89,7 @@ def main():
 
 
     model = Net().to(device)
-    optimizer = optim.SGD(model.parameters(), lr=args.lr)
+    optimizer = optim.Adam(model.parameters(), lr=1)
 
     ssp = SSP()
     # optimizer = optim.Adadelta(model.parameters(), lr=args.lr)
@@ -106,7 +106,7 @@ def main():
         loss["sgd"].extend(loss_sgd)
         loss['ssp'].extend(loss_ssp)
         # scheduler.step()
-    with open('loss/ssp+sgd_in_batch_loss','w') as f:
+    with open('loss/ssp+sgd_in_batch_loss_lr_1','w') as f:
         f.write(str(loss))
 
 
