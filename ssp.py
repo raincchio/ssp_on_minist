@@ -3,6 +3,9 @@ import torch
 from collections import defaultdict
 import torch.nn.functional as F
 import utils as U
+from torchvision import datasets, transforms
+from copy import deepcopy
+
 
 class SSP(object):
     def __init__(self):
@@ -106,7 +109,9 @@ class SSP(object):
 
         if sampledata:
             grad_groupslist = []
-            train_loader = torch.utils.data.DataLoader(dataset, **train_kwargs)
+            train_kwargs_ = deepcopy(train_kwargs)
+            train_kwargs_["batch_size"] = 4*train_kwargs["batch_size"]
+            train_loader = torch.utils.data.DataLoader(dataset, **train_kwargs_)
             for batch_idx, (data, target) in enumerate(train_loader):
 
                 data, target = data.to(device), target.to(device)
@@ -117,8 +122,9 @@ class SSP(object):
                 grad_groupslist.append(self.getGrad(optimizer))
 
                 if len(grad_groupslist)==samplesize:
+                    # print(len(grad_groupslist),samplesize)
                     break
-
+            # print(len(grad_groupslist), samplesize)
             assert len(grad_groupslist) == samplesize, "error, check count variable"
 
             for grad_groups in grad_groupslist[:-1]:
@@ -128,10 +134,10 @@ class SSP(object):
 
             for grad_group in grad_groupslist[-1]:
                 for grad in grad_group:
-                    grad /= buffersize
+                    grad /= samplesize
 
 
-            truth_grads = grad_groupslist[-1]
+            true_grads = grad_groupslist[-1]
             # compute average
 
         else:
@@ -143,14 +149,14 @@ class SSP(object):
             output = model(data)
             loss = F.nll_loss(output, target)
             loss.backward()
-            truth_grads = self.getGrad(optimizer)
+            true_grads = self.getGrad(optimizer)
 
 
         with torch.no_grad():
             if epoch <= buffersize:
-                self.Buffer1.append([params, truth_grads])
+                self.Buffer1.append([params, true_grads])
             else:
-                self.Buffer2.append([params, truth_grads])
+                self.Buffer2.append([params, true_grads])
 
             if len(self.Buffer2) == buffersize:
 
@@ -169,7 +175,7 @@ class SSP(object):
                 self.Buffer1 = self.Buffer2 + []
                 self.Buffer2.clear()
 
-    def step_with_average_gradient(self, batch_idx, optimizer, buffersize=2):
+    def step_with_exp_average_gradient(self, batch_idx, optimizer, buffersize=2):
         # one step sgd
         params = self.getWeight(optimizer)
         grads = self.getGrad(optimizer)

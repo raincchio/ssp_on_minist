@@ -34,7 +34,7 @@ def main():
     # Training settings
     parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
 
-    parser.add_argument('--batch-size', type=int, default=64, metavar='N')
+    parser.add_argument('--batch-size', type=int, default=128, metavar='N')
     parser.add_argument('--test-batch-size', type=int, default=1000, metavar='N')
     parser.add_argument('--epochs', type=int, default=200, metavar='N')
     parser.add_argument('--gamma', type=float, default=0.7, metavar='M')
@@ -72,10 +72,10 @@ def main():
     # optimizer = optim.Adadelta(model.parameters(), lr=args.lr)
     # scheduler = StepLR(optimizer, step_size=1, gamma=args.gamma)
 
-    f = open('loss/adam_loss','w+')
+    f = open('loss/adam_loss','w')
     for epoch in range(1, args.epochs + 1):
         loss_ = train(args, model, device, train_loader, optimizer, epoch)
-        f.write(str(loss_))
+        f.write(str(loss_)+'\n')
         # scheduler.step()
     f.close()
 
