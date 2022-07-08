@@ -101,11 +101,9 @@ class SSP(object):
                     state_steps.append(state['step'])
         return loss
 
-
     def step_with_true_gradient(self, model, device, dataset, train_kwargs, optimizer, epoch, buffersize=2, sampledata=False, samplesize=2):
         # one step sgd
-        params = self.getWeight(optimizer)
-        grads = self.getGrad(optimizer)
+
 
         if sampledata:
             grad_groupslist = []
@@ -136,7 +134,6 @@ class SSP(object):
                 for grad in grad_group:
                     grad /= samplesize
 
-
             true_grads = grad_groupslist[-1]
             # compute average
 
@@ -151,6 +148,8 @@ class SSP(object):
             loss.backward()
             true_grads = self.getGrad(optimizer)
 
+        params = self.getWeight(optimizer)
+        grads = self.Buffer2[-1][1]
 
         with torch.no_grad():
             if epoch <= buffersize:

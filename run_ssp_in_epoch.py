@@ -21,7 +21,6 @@ def train(args, model, device, dataset, train_kwargs, optimizer, epoch):
         loss.backward()
         optimizer.step()
         losses.append(loss.item())
-        return losses
         if batch_idx % args.log_interval == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(data), len(train_loader.dataset),
@@ -94,7 +93,7 @@ def main():
         # step size planning between consequcence 3 epoch parameter
         ssp.step_with_true_gradient(model, device, dataset, train_kwargs, optimizer,
                                     epoch, buffersize=3, sampledata=True, samplesize=4)
-        print(epoch,loss_)
+        print(epoch, loss_)
 
         f.write(str(loss_)+'\n')
 if __name__ == '__main__':
