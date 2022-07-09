@@ -72,7 +72,7 @@ def main():
     # optimizer = optim.Adadelta(model.parameters(), lr=args.lr)
     # scheduler = StepLR(optimizer, step_size=1, gamma=args.gamma)
 
-    f = open('loss/sgd_loss_lr_1','w')
+    f = open('loss/sgd_loss','w')
     for epoch in range(1, args.epochs + 1):
         loss_ = train(args, model, device, train_loader, optimizer, epoch)
         f.write(str(loss_)+'\n')

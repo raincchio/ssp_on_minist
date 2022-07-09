@@ -60,7 +60,7 @@ def main():
     train_kwargs = {'batch_size': args.batch_size}
     test_kwargs = {'batch_size': args.test_batch_size}
     if use_cuda:
-        cuda_kwargs = {'num_workers': 1,
+        cuda_kwargs = {'num_workers': 0,
                        'pin_memory': True,
                        'shuffle': True}
         train_kwargs.update(cuda_kwargs)
@@ -83,17 +83,17 @@ def main():
 
     # scheduler = StepLR(optimizer, step_size=1, gamma=args.gamma)
 
-    f = open("loss/ssp+sgd_in_epoch_loss_lr_1","w")
+    f = open("loss/ssp+sgd_in_epoch_loss_lr_2","w")
     # fc = open("loss/ssp+sgd_in_epoch_loss_compare","w")
 
-    for epoch in range(1, 20000):
+    for epoch in range(1, 200):
 
         # use any grdaient descent method for optimizer
         loss_ = train(args, model, device, dataset, train_kwargs, optimizer, epoch)
         # step size planning between consequcence 3 epoch parameter
         ssp.step_with_true_gradient(model, device, dataset, train_kwargs, optimizer,
-                                    epoch, buffersize=3, sampledata=True, samplesize=4)
-        print(epoch, loss_)
+                                    epoch, K=3, sampledata=True)
+        # print(epoch, loss_)
 
         f.write(str(loss_)+'\n')
 if __name__ == '__main__':

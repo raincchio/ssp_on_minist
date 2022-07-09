@@ -12,6 +12,7 @@ class SSP(object):
         self.state = defaultdict(dict)
         self.Buffer1 = []
         self.Buffer2 = []
+        self.Buffer = []
         self.average_g_h = []
 
     def __setstate__(self, state):
@@ -39,8 +40,9 @@ class SSP(object):
 
             for p in group['params']:
                 if p.grad is not None:
-                    params_.append(p.clone())
-                    grads_.append(p.grad.clone())
+                    p_ = p.clone()
+                    params_.append(p_)
+                    grads_.append(p_.grad)
             params.append(params_)
             grads.append(grads_)
 
@@ -57,13 +59,23 @@ class SSP(object):
             grads.append(grads_)
 
         return grads
-    def getWeight(self, current):
+    def getWeight(self, optimizer, copymethod='value'):
+        '''
+
+        :param optimizer:
+        :param copymethod: value or reference
+        :return:
+        '''
+
         params = []
-        for group in current.param_groups:
+        for group in optimizer.param_groups:
             params_ = []
             for p in group['params']:
                 if p.grad is not None:
-                    params_.append(p.clone())
+                    if copymethod=="ref":
+                        params_.append(p)
+                    else:
+                        params_.append(p.clone())
             params.append(params_)
 
         return params
@@ -101,14 +113,14 @@ class SSP(object):
                     state_steps.append(state['step'])
         return loss
 
-    def step_with_true_gradient(self, model, device, dataset, train_kwargs, optimizer, epoch, buffersize=2, sampledata=False, samplesize=2):
+    def step_with_true_gradient(self, model, device, dataset, train_kwargs, optimizer, epoch, K=2, sampledata=False):
         # one step sgd
 
 
         if sampledata:
             grad_groupslist = []
             train_kwargs_ = deepcopy(train_kwargs)
-            train_kwargs_["batch_size"] = 4*train_kwargs["batch_size"]
+            train_kwargs_["batch_size"] = 5120
             train_loader = torch.utils.data.DataLoader(dataset, **train_kwargs_)
             for batch_idx, (data, target) in enumerate(train_loader):
 
@@ -119,11 +131,12 @@ class SSP(object):
                 loss.backward()
                 grad_groupslist.append(self.getGrad(optimizer))
 
-                if len(grad_groupslist)==samplesize:
+                # if len(grad_groupslist)==samplesize:
                     # print(len(grad_groupslist),samplesize)
-                    break
+                    # break
             # print(len(grad_groupslist), samplesize)
-            assert len(grad_groupslist) == samplesize, "error, check count variable"
+            # assert  == samplesize, "error, check count variable"
+            samplesize = len(grad_groupslist)
 
             for grad_groups in grad_groupslist[:-1]:
                 for gidx, grad_group in enumerate(grad_groups):
@@ -149,15 +162,41 @@ class SSP(object):
             true_grads = self.getGrad(optimizer)
 
         params = self.getWeight(optimizer)
-        grads = self.Buffer2[-1][1]
 
-        with torch.no_grad():
-            if epoch <= buffersize:
-                self.Buffer1.append([params, true_grads])
-            else:
-                self.Buffer2.append([params, true_grads])
+        # self.Buffer.append([params, true_grads])
+        #
+        # if len(self.Buffer2) == K*2:
+        #
+        #     grads = self.Buffer[-1]
+        #
+        #     with torch.no_grad():
+        #
+        #     # compute alpha from buffer
+        #         numerator = U.compute_numer(self.Buffer[:K], self.Buffer[K:])
+        #         denominator = U.compute_denom(self.Buffer[:K])
+        #
+        #         alpha = U.check_value(numerator, denominator)
+        #
+        #         # update parameters
+        #         # for pg in zipparams:
+        #         params = self.getWeight(optimizer,copymethod='ref')
+        #         for idx_pg in range(len(params)):
+        #             for i, param in enumerate(params[idx_pg]):
+        #                 param.add_(-alpha[idx_pg][i]*grads[idx_pg][i])
+        #
+        #         self.Buffer.pop(0)
 
-            if len(self.Buffer2) == buffersize:
+
+        if epoch <= K:
+            self.Buffer1.append([params, true_grads])
+        else:
+            self.Buffer2.append([params, true_grads])
+
+        if len(self.Buffer2) == K:
+
+            _, grads = self.Buffer2[-1]
+
+            with torch.no_grad():
 
                 # compute alpha from buffer
                 numerator = U.compute_numer(self.Buffer1, self.Buffer2)
@@ -166,14 +205,15 @@ class SSP(object):
                 alpha = U.check_value(numerator, denominator)
 
                 # update parameters
-                # for pg in zipparams:
+                # note: using params in the optimizer
+                params = self.getWeight(optimizer,copymethod='ref')
                 for idx_pg in range(len(params)):
                     for i, param in enumerate(params[idx_pg]):
                         param.add_(-alpha[idx_pg][i]*grads[idx_pg][i])
 
-                self.Buffer1 = self.Buffer2 + []
-                self.Buffer2.clear()
-        # return F.nll_loss(output, target)
+            self.Buffer1 = self.Buffer2 + []
+            self.Buffer2.clear()
+
 
     def step_with_exp_average_gradient(self, batch_idx, optimizer, buffersize=2):
         # one step sgd
