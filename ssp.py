@@ -120,7 +120,7 @@ class SSP(object):
         if sampledata:
             grad_groupslist = []
             train_kwargs_ = deepcopy(train_kwargs)
-            train_kwargs_["batch_size"] = 5120
+            train_kwargs_["batch_size"] = 10000
             train_loader = torch.utils.data.DataLoader(dataset, **train_kwargs_)
             for batch_idx, (data, target) in enumerate(train_loader):
 

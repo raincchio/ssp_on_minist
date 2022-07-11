@@ -9,10 +9,9 @@ from torch.optim.lr_scheduler import StepLR
 from ssp import SSP
 
 
-def train(args, model, device, dataset, train_kwargs, optimizer, epoch):
+def train(args, model, device, train_loader, optimizer, epoch):
     losses = []
     model.train()
-    train_loader = torch.utils.data.DataLoader(dataset, **train_kwargs)
     for batch_idx, (data, target) in enumerate(train_loader):
         data, target = data.to(device), target.to(device)
         optimizer.zero_grad()
@@ -26,6 +25,28 @@ def train(args, model, device, dataset, train_kwargs, optimizer, epoch):
                 epoch, batch_idx * len(data), len(train_loader.dataset),
                        100. * batch_idx / len(train_loader), loss.item()))
     return losses
+
+
+def test(model, device, test_loader):
+    model.eval()
+    test_loss = 0
+    correct = 0
+    with torch.no_grad():
+        for data, target in test_loader:
+            data, target = data.to(device), target.to(device)
+            output = model(data)
+            test_loss += F.nll_loss(output, target, reduction='sum').item()  # sum up batch loss
+            pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
+            correct += pred.eq(target.view_as(pred)).sum().item()
+
+    test_loss /= len(test_loader.dataset)
+
+    print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
+        test_loss, correct, len(test_loader.dataset),
+        100. * correct / len(test_loader.dataset)))
+
+    return test_loss
+
 
 
 def main():
@@ -58,7 +79,7 @@ def main():
     device = torch.device("cuda" if use_cuda else "cpu")
 
     train_kwargs = {'batch_size': args.batch_size}
-    test_kwargs = {'batch_size': args.test_batch_size}
+    test_kwargs = {'batch_size': 1000}
     if use_cuda:
         cuda_kwargs = {'num_workers': 0,
                        'pin_memory': True,
@@ -70,31 +91,36 @@ def main():
         transforms.ToTensor(),
         transforms.Normalize((0.1307,), (0.3081,))
     ])
-    dataset = datasets.MNIST('data', train=True,
+    dataset_train = datasets.MNIST('data', train=True,
                               transform=transform)
+    dataset_test = datasets.MNIST('data', train=False,
+                                   transform=transform)
 
-
+    train_loader = torch.utils.data.DataLoader(dataset_train, **train_kwargs)
+    test_loader = torch.utils.data.DataLoader(dataset_test, **test_kwargs)
 
     model = Net().to(device)
-    optimizer = optim.SGD(model.parameters(), lr=0.001)
+    optimizer = optim.Adam(model.parameters(), lr=0.01)
 
     ssp = SSP()
     # optimizer = optim.Adadelta(model.parameters(), lr=args.lr)
 
     # scheduler = StepLR(optimizer, step_size=1, gamma=args.gamma)
 
-    f = open("loss/ssp+sgd_in_epoch_loss_lr_2","w")
+    f = open("loss/adam_0.01", "w")
     # fc = open("loss/ssp+sgd_in_epoch_loss_compare","w")
 
-    for epoch in range(1, 200):
-
+    for epoch in range(1, 201):
         # use any grdaient descent method for optimizer
-        loss_ = train(args, model, device, dataset, train_kwargs, optimizer, epoch)
-        # step size planning between consequcence 3 epoch parameter
-        ssp.step_with_true_gradient(model, device, dataset, train_kwargs, optimizer,
-                                    epoch, K=3, sampledata=True)
-        # print(epoch, loss_)
+        train_loss = train(args, model, device, train_loader, optimizer, epoch)
 
-        f.write(str(loss_)+'\n')
+        # step size planning between consequcence 3 epoch parameter
+        # ssp.step_with_true_gradient(model, device, dataset_train, train_kwargs, optimizer,epoch, K=3, sampledata=True)
+
+        test_loss = test(model, device, test_loader)
+        f.write(str([train_loss, test_loss])+'\n')
+
+        # f.write(str(train_loss) + '\n')
+
 if __name__ == '__main__':
     main()

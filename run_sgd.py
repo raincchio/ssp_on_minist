@@ -68,11 +68,11 @@ def main():
     train_loader = torch.utils.data.DataLoader(dataset,**train_kwargs)
 
     model = Net().to(device)
-    optimizer = optim.SGD(model.parameters(), lr=1)
+    optimizer = optim.Adam(model.parameters())
     # optimizer = optim.Adadelta(model.parameters(), lr=args.lr)
     # scheduler = StepLR(optimizer, step_size=1, gamma=args.gamma)
 
-    f = open('loss/sgd_loss','w')
+    f = open('loss/adam_test_2','w')
     for epoch in range(1, args.epochs + 1):
         loss_ = train(args, model, device, train_loader, optimizer, epoch)
         f.write(str(loss_)+'\n')
