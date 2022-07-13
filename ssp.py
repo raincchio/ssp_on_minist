@@ -113,10 +113,8 @@ class SSP(object):
                     state_steps.append(state['step'])
         return loss
 
-    def step_with_true_gradient(self, model, device, dataset, train_kwargs, optimizer, epoch, K=2, sampledata=False):
+    def step_with_true_gradient(self, model, device, dataset, train_kwargs, optimizer, epoch, K=2, sampledata=False, noise=False):
         # one step sgd
-
-
         if sampledata:
             grad_groupslist = []
             train_kwargs_ = deepcopy(train_kwargs)
@@ -200,7 +198,7 @@ class SSP(object):
 
                 # compute alpha from buffer
                 numerator = U.compute_numer(self.Buffer1, self.Buffer2)
-                denominator = U.compute_denom(self.Buffer1)
+                denominator = U.compute_denom(self.Buffer1, noise)
 
                 alpha = U.check_value(numerator, denominator)
 
@@ -213,6 +211,7 @@ class SSP(object):
 
             self.Buffer1 = self.Buffer2 + []
             self.Buffer2.clear()
+            print("do step size planning")
 
 
     def step_with_exp_average_gradient(self, batch_idx, optimizer, buffersize=2):

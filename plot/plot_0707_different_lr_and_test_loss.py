@@ -1,24 +1,24 @@
-with open("../loss/sgd_0.01", 'r') as f:
+with open("../loss/0707/sgd_0.01", 'r') as f:
     data = f.read()
     sgd_001 = list(map(eval, data.split("\n")[:-1]))
 
-with open("../loss/sgd_0.001", 'r') as f:
+with open("../loss/0707/sgd_0.001", 'r') as f:
     data = f.read()
     sgd_0001 = list(map(eval, data.split("\n")[:-1]))
 
-with open("../loss/sgd_0.0001", 'r') as f:
+with open("../loss/0707/sgd_0.0001", 'r') as f:
     data = f.read()
     sgd_00001 = list(map(eval, data.split("\n")[:-1]))
 
-with open("../loss/ssp_0.01", 'r') as f:
+with open("../loss/0707/ssp_0.01", 'r') as f:
     data = f.read()
     ssp_001 = list(map(eval, data.split("\n")[:-1]))
 
-with open("../loss/ssp_0.001", 'r') as f:
+with open("../loss/0707/ssp_0.001", 'r') as f:
     data = f.read()
     ssp_0001 = list(map(eval, data.split("\n")[:-1]))
 
-with open("../loss/ssp_0.0001", 'r') as f:
+with open("../loss/0707/ssp_0.0001", 'r') as f:
     data = f.read()
     ssp_00001 = list(map(eval, data.split("\n")[:-1]))
 

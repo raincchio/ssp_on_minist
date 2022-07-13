@@ -23,18 +23,20 @@ def compute_numer(B1, B2):
 
     return result
 
-def compute_denom(B1):
+def compute_denom(B1, noise=False):
     result = []
     for pg in B1[0][0]:
         pg_ = []
         for para in pg:
             pg_.append(torch.zeros_like(para))
         result.append(pg_)
-
+    import random as R
     for param_grad_data in B1:
         for idx_pg, grad_group in enumerate(param_grad_data[1]):  # only one dimension
             for idx_grad, grad in enumerate(grad_group):
                 result[idx_pg][idx_grad] += grad * grad
+                if noise:
+                    result[idx_pg][idx_grad] += R.randint(0,9)*1e-8
 
     return result
 
