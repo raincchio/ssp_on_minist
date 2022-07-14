@@ -81,9 +81,9 @@ fig, ax = plt.subplots(2,2, figsize=(10,10))
 
 # first row
 figa = ax[0][0]
-figa.plot(sgd_001_train_loss, color='b',label='sgd(lr=0.1)')
+figa.plot(sgd_01_train_loss, color='b',label='sgd(lr=0.1)')
 figa.plot(ssp_sgd_01_3_train_loss, color='r',label='sgd+ssp(lr=0.1,k=3)')
-figa.plot(ssp_sgd_01_5_train_loss, color='orange',label='sgd+ssp(lr=0.1,k=5)')
+# figa.plot(ssp_sgd_01_5_train_loss, color='orange',label='sgd+ssp(lr=0.1,k=5)')
 xpoint = [0,20,40,60,80,100,120,140,160,180,200]
 xvalue = [469*x for x in xpoint]
 figa.set_xticks(xvalue)
@@ -132,7 +132,7 @@ figa.legend()
 figa.set_ylabel('loss')
 
 plt.tight_layout()
-# plt.show()
-plt.savefig("../figure/0717")
+plt.show()
+# plt.savefig("../figure/0717")
 
 # print(adam_loss)

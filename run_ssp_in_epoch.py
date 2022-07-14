@@ -137,7 +137,7 @@ def main():
         if args.noise:
             fname += "-noise"
 
-    fpath = "loss/0713/"
+    fpath = "loss/0714/"
     os.makedirs(fpath, exist_ok=True)
     print(fpath+fname)
     f = open(fpath+fname, "w")
@@ -149,7 +149,7 @@ def main():
 
         if args.ssp:
             # step size planning  between consequcence 3 epoch parameter
-            ssp.step_with_true_gradient(model, device, dataset_train, train_kwargs, optimizer,epoch, K=3, sampledata=True, noise=args.noise)
+            ssp.step_with_true_gradient(model, device, dataset_train, train_kwargs, optimizer,epoch, K=args.bufferlength, sampledata=True, noise=args.noise)
 
         test_loss = test(model, device, test_loader)
         f.write(str([train_loss, test_loss])+'\n')
@@ -160,4 +160,8 @@ if __name__ == '__main__':
     main()
     # python run_ssp_in_epoch.py --lr=1e-2 --beta1=0.9 --beta2=0.999 --ssp
     # python run_ssp_in_epoch.py --optimizer=sgd --ssp --lr=1e-2 --noise
-    # python run_ssp_in_epoch.py --optimizer=sgd --lr=1e-1 --bufferlength 3
+    # python run_ssp_in_epoch.py --optimizer=sgd --ssp --lr=1e-2 --bufferlength 5
+
+    # cchio minist
+    # cd workspace/minist
+    # python run_ssp_in_epoch.py --ssp --optimizer=sgd --lr=0.1 --bufferlength=1

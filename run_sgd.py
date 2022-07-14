@@ -36,7 +36,7 @@ def main():
 
     parser.add_argument('--batch-size', type=int, default=128, metavar='N')
     parser.add_argument('--test-batch-size', type=int, default=1000, metavar='N')
-    parser.add_argument('--epochs', type=int, default=200, metavar='N')
+    parser.add_argument('--epochs', type=int, default=1, metavar='N')
     parser.add_argument('--gamma', type=float, default=0.7, metavar='M')
     parser.add_argument('--seed', type=int, default=1, metavar='S')
     parser.add_argument('--log-interval', type=int, default=10, metavar='N')
@@ -68,14 +68,14 @@ def main():
     train_loader = torch.utils.data.DataLoader(dataset,**train_kwargs)
 
     model = Net().to(device)
-    optimizer = optim.Adam(model.parameters())
+    optimizer = optim.Adam(model.parameters(), lr=0.1)
     # optimizer = optim.Adadelta(model.parameters(), lr=args.lr)
     # scheduler = StepLR(optimizer, step_size=1, gamma=args.gamma)
 
-    f = open('loss/adam_test_2','w')
+    # f = open('loss/adam_test_2','w')
     for epoch in range(1, args.epochs + 1):
         loss_ = train(args, model, device, train_loader, optimizer, epoch)
-        f.write(str(loss_)+'\n')
+        # f.write(str(loss_)+'\n')
         # scheduler.step()
 
 

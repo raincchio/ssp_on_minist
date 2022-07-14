@@ -30,7 +30,6 @@ class SSP(object):
 
         return grads
 
-
     def getWeightAndGrad(self, optimizer):
         params = []
         grads = []
@@ -59,6 +58,7 @@ class SSP(object):
             grads.append(grads_)
 
         return grads
+
     def getWeight(self, optimizer, copymethod='value'):
         '''
 
@@ -72,13 +72,14 @@ class SSP(object):
             params_ = []
             for p in group['params']:
                 if p.grad is not None:
-                    if copymethod=="ref":
+                    if copymethod == "ref":
                         params_.append(p)
                     else:
                         params_.append(p.clone())
             params.append(params_)
 
         return params
+
     @torch.no_grad()
     def step_reserve(self, closure=None):
         loss = None
@@ -113,7 +114,8 @@ class SSP(object):
                     state_steps.append(state['step'])
         return loss
 
-    def step_with_true_gradient(self, model, device, dataset, train_kwargs, optimizer, epoch, K=2, sampledata=False, noise=False):
+    def step_with_true_gradient(self, model, device, dataset, train_kwargs, optimizer, epoch, K=2, sampledata=False,
+                                noise=False):
         # one step sgd
         if sampledata:
             grad_groupslist = []
@@ -121,7 +123,6 @@ class SSP(object):
             train_kwargs_["batch_size"] = 10000
             train_loader = torch.utils.data.DataLoader(dataset, **train_kwargs_)
             for batch_idx, (data, target) in enumerate(train_loader):
-
                 data, target = data.to(device), target.to(device)
                 optimizer.zero_grad()
                 output = model(data)
@@ -130,8 +131,8 @@ class SSP(object):
                 grad_groupslist.append(self.getGrad(optimizer))
 
                 # if len(grad_groupslist)==samplesize:
-                    # print(len(grad_groupslist),samplesize)
-                    # break
+                # print(len(grad_groupslist),samplesize)
+                # break
             # print(len(grad_groupslist), samplesize)
             # assert  == samplesize, "error, check count variable"
             samplesize = len(grad_groupslist)
@@ -184,7 +185,6 @@ class SSP(object):
         #
         #         self.Buffer.pop(0)
 
-
         if epoch <= K:
             self.Buffer1.append([params, true_grads])
         else:
@@ -193,7 +193,7 @@ class SSP(object):
         if len(self.Buffer2) == K:
 
             _, grads = self.Buffer2[-1]
-
+            #
             with torch.no_grad():
 
                 # compute alpha from buffer
@@ -208,11 +208,14 @@ class SSP(object):
                 for idx_pg in range(len(params)):
                     for i, param in enumerate(params[idx_pg]):
                         param.add_(-alpha[idx_pg][i]*grads[idx_pg][i])
+                # params = self.getWeight(optimizer, copymethod='ref')
+                # for idx_pg in range(len(params)):
+                #     for i, param in enumerate(params[idx_pg]):
+                #         param.add_(grads[idx_pg][i], alpha=-0.01)
 
             self.Buffer1 = self.Buffer2 + []
             self.Buffer2.clear()
             print("do step size planning")
-
 
     def step_with_exp_average_gradient(self, batch_idx, optimizer, buffersize=2):
         # one step sgd
@@ -240,7 +243,7 @@ class SSP(object):
 
                 # update parameters
                 for i, param in enumerate(params):
-                    param.add_(-alpha[i]*grads[i])
+                    param.add_(-alpha[i] * grads[i])
 
                 self.Buffer1 = self.Buffer2 + []
                 self.Buffer2.clear()
