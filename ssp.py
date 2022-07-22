@@ -208,6 +208,8 @@ class SSP(object):
                 for idx_pg in range(len(params)):
                     for i, param in enumerate(params[idx_pg]):
                         param.add_(-alpha[idx_pg][i]*grads[idx_pg][i])
+
+
                 # params = self.getWeight(optimizer, copymethod='ref')
                 # for idx_pg in range(len(params)):
                 #     for i, param in enumerate(params[idx_pg]):

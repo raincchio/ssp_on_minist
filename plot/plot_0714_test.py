@@ -71,7 +71,7 @@ def process_data(loss_data):
     for loss in loss_data:
         train_loss.extend(loss[0])
         test_loss.append(loss[1])
-    return smooth(train_loss,469), test_loss
+    return smooth(train_loss,1), test_loss
 
 
 
@@ -101,7 +101,7 @@ xpoint = [0,20,40,60,80,100,120,140,160,180,200]
 xvalue = [469*x for x in xpoint]
 figa.set_xticks(xvalue)
 figa.set_xticklabels(xpoint)
-figa.set_yscale('log')
+# figa.set_yscale('log')
 figa.set_title('train loss(a)')
 figa.legend()
 
@@ -140,7 +140,7 @@ figa.plot(ssp_001_5_test_loss, color=clrs[3],label='sgd+ssp(lr=0.01,k=5)')
 xpoint = [0,20,40,60,80,100,120,140,160,180,200]
 xvalue = [x for x in xpoint]
 figa.set_xticks(xvalue)
-figa.set_yscale('log')
+# figa.set_yscale('log')
 figa.set_xticklabels(xpoint)
 figa.set_title('test loss(d)')
 figa.set_xlabel('epoch')

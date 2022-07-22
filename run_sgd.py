@@ -68,7 +68,7 @@ def main():
     train_loader = torch.utils.data.DataLoader(dataset,**train_kwargs)
 
     model = Net().to(device)
-    optimizer = optim.Adam(model.parameters(), lr=0.1)
+    optimizer = optim.SGD(model.parameters(), lr=0.1)
     # optimizer = optim.Adadelta(model.parameters(), lr=args.lr)
     # scheduler = StepLR(optimizer, step_size=1, gamma=args.gamma)
 
