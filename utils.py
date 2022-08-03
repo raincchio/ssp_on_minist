@@ -5,7 +5,7 @@ from typing import List, Optional
 import torch.nn.functional as F
 
 
-def train(args, model, device, train_loader, optimizer, epoch):
+def train_EP(args, model, device, train_loader, optimizer, epoch):
     train_loss = 0
     model.train()
     for batch_idx, (data, target) in enumerate(train_loader):
@@ -47,8 +47,6 @@ def train_GD(args, model, device, train_loader, optimizer, epoch):
     print('Epoch: {} Train set-Average loss: {:.4f}'.format(epoch, train_loss), end='')
 
     return train_loss.item()
-
-
 
 
 
@@ -144,7 +142,7 @@ def update_exp_average_grad(current):
 
                 state = current.state[p]
                 # Lazy state initialization
-                if len(state) == 0:
+                if "exp_avg_grad" not in state:
                     state['step'] = 0
                     # Exponential moving average of gradient values
                     state['exp_avg_grad'] = torch.zeros_like(p, memory_format=torch.preserve_format)

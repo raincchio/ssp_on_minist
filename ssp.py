@@ -11,7 +11,6 @@ from copy import deepcopy
 
 class SSP(object):
     def __init__(self):
-        self.state = defaultdict(dict)
         self.Buffer1 = []
         self.Buffer2 = []
         self.Buffer = []
@@ -27,7 +26,7 @@ class SSP(object):
             grads_ = []
             for p in group['params']:
                 if p.grad is not None:
-                    grads_.append(self.state[p]['exp_avg_grad'])
+                    grads_.append(optimizer.state[p]['exp_avg_grad'])
             grads.append(grads_)
 
         return grads
@@ -49,14 +48,14 @@ class SSP(object):
 
         return params, grads
 
-    def getGrad(self, optimizer, base=1):
+    def getGrad(self, optimizer):
         grads = []
 
         for group in optimizer.param_groups:
             grads_ = []
             for p in group['params']:
                 if p.grad is not None:
-                    grads_.append(p.grad.clone()/base)
+                    grads_.append(p.grad.clone())
             grads.append(grads_)
 
         return grads
@@ -133,9 +132,9 @@ class SSP(object):
             data, target = data.to(device), target.to(device)
             output = model(data)
             loss += F.nll_loss(output, target)
-        loss.backward()
+        (loss/len(dataloader)).backward()
 
-        true_grads = self.getGrad(optimizer, base=len(dataloader))
+        true_grads = self.getGrad(optimizer)
         params = self.getWeight(optimizer)
 
         if len(self.Buffer1) < K:
@@ -161,8 +160,7 @@ class SSP(object):
                 params = self.getWeight(optimizer,copymethod='ref')
                 for idx_pg in range(len(params)):
                     for i, param in enumerate(params[idx_pg]):
-                        tmp = -alpha[idx_pg][i]/469
-                        param.add_(tmp*grads[idx_pg][i])
+                        param.add_(-alpha[idx_pg][i]*grads[idx_pg][i])
 
                 # torch.save(alpha, fpath+'alpha/alpha-'+str(epoch))
 
@@ -195,7 +193,7 @@ class SSP(object):
                 loss = F.nll_loss(output, target)
                 loss.backward()
 
-            grads = self.getGrad(optimizer, base=len(dataloader))
+            grads = self.getGrad(optimizer)
             #
             with torch.no_grad():
 
@@ -206,20 +204,21 @@ class SSP(object):
 
             self.Buffer2.clear()
             print("do gd instead of step size planning")
-    def step_with_exp_average_gradient(self, batch_idx, optimizer, buffersize=2):
+    def step_with_stochastic_gradient(self, model, data, batch_idx, optimizer, buffersize=2, exp_average=False):
         # one step sgd
         params = self.getWeight(optimizer)
+        # stochastic grads
         grads = self.getGrad(optimizer)
         # resotre param
-
-        U.update_exp_average_grad(optimizer)
-        average_grads = self.getExpGrad(optimizer)
+        if exp_average:
+            U.update_exp_average_grad(optimizer)
+            grads = self.getExpGrad(optimizer)
 
         with torch.no_grad():
-            if batch_idx < buffersize:
-                self.Buffer1.append([params, average_grads])
+            if len(self.Buffer1) < buffersize:
+                self.Buffer1.append([params, grads])
             else:
-                self.Buffer2.append([params, average_grads])
+                self.Buffer2.append([params, grads])
 
             if len(self.Buffer2) == buffersize:
                 # compute
@@ -231,8 +230,12 @@ class SSP(object):
                 alpha = U.check_value(numerator, denominator)
 
                 # update parameters
-                for i, param in enumerate(params):
-                    param.add_(-alpha[i] * grads[i])
+                params = self.getWeight(optimizer, copymethod='ref')
+                for idx_pg in range(len(params)):
+                    for i, param in enumerate(params[idx_pg]):
+                        param.add_(-alpha[idx_pg][i] * grads[idx_pg][i])
 
                 self.Buffer1 = self.Buffer2 + []
                 self.Buffer2.clear()
+                print('do step size planing')
+

@@ -1,11 +1,9 @@
-from __future__ import print_function
 import argparse
 import torch
 from net import FCNet as Net
 import torch.nn.functional as F
 import torch.optim as optim
 from torchvision import datasets, transforms
-from torch.optim.lr_scheduler import StepLR
 from ssp import SSP
 
 
@@ -26,18 +24,22 @@ def train(args, model, device, dataset, train_kwargs, optimizer, epoch, ssp):
         loss.backward()
         optimizer.step()
 
-        loss_sgd.append(F.nll_loss(output, target).item())
+        output = model(data)
+        # print(output[0][0])
+        loss_sgd_ = F.nll_loss(output, target).item()
+        loss_sgd.append(loss_sgd_)
 
         # do SSP
-        ssp.step_with_exp_average_gradient(batch_idx, optimizer, device, buffersize=2)
+        ssp.step_with_stochastic_gradient(model, data, batch_idx, optimizer, buffersize=2,exp_average=True)
 
-
+        output = model(data)
+        # print(output[0][0])
         loss_ssp_ = F.nll_loss(output, target).item()
         loss_ssp.append(loss_ssp_)
 
-        if batch_idx % args.log_interval == 0:
-            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss_before: {:.6f}\tLoss_sgd: {:.6f}\tLoss_sssp: {:.6f}'.format(
-                epoch, batch_idx * len(data), len(train_loader.dataset),
+
+        print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss_before: {:.6f}\tLoss_sgd: {:.6f}\tLoss_sssp: {:.6f}'.format(
+            epoch, batch_idx * len(data), len(train_loader.dataset),
                        100. * batch_idx / len(train_loader), loss_before_, loss_sgd_, loss_ssp_))
     return loss_before, loss_sgd, loss_ssp
 
@@ -51,7 +53,7 @@ def main():
                         help='input batch size for testing (default: 1000)')
     parser.add_argument('--epochs', type=int, default=200, metavar='N',
                         help='number of epochs to train (default: 14)')
-    parser.add_argument('--lr', type=float, default=1.0, metavar='LR',
+    parser.add_argument('--lr', type=float, default=0.01, metavar='LR',
                         help='learning rate (default: 1.0)')
     parser.add_argument('--gamma', type=float, default=0.7, metavar='M',
                         help='Learning rate step gamma (default: 0.7)')
@@ -74,8 +76,8 @@ def main():
     test_kwargs = {'batch_size': args.test_batch_size}
     if use_cuda:
         cuda_kwargs = {'num_workers': 0,
-                       'pin_memory': True,
-                       'shuffle': True}
+                       'pin_memory': False,
+                       'shuffle': False}
         train_kwargs.update(cuda_kwargs)
         test_kwargs.update(cuda_kwargs)
 
@@ -89,7 +91,7 @@ def main():
 
 
     model = Net().to(device)
-    optimizer = optim.Adam(model.parameters(), lr=1)
+    optimizer = optim.SGD(model.parameters(), lr=args.lr)
 
     ssp = SSP()
     # optimizer = optim.Adadelta(model.parameters(), lr=args.lr)
