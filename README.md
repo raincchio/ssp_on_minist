@@ -23,11 +23,11 @@ Also can use exp_average flag to control if exp averager over the histroy gradie
 python run_ssp_in_sgd_update.py 
 ```
 
-# Note
+## Note
 something will cause the gradient to be uncertity.
 such as the network architecture, Dropout layer introduces randomness, the shuffle flag in the dataset setting, and torch's defalut floating point dtyp
 
-# About compute the global gradient.
+## About compute the global gradient.
 test/test_true_gradint, there exits three methods to compute the gradient.
 a. compute batch data loss, then backward, average gradients over the batch.
 b. sum the batch data loss, then bakcward, take the gradient then divide the batch nums
