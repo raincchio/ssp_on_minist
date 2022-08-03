@@ -1,14 +1,23 @@
-# from __future__ import print_function
 import argparse
 import torch
 from net import FCNet as Net
 import torch.nn.functional as F
 import torch.optim as optim
 from torchvision import datasets, transforms
+import time
 
-# torch.set_default_dtype(torch.float64)
-# from utils import compute_denom, compute_numer, update_parameter, getWeightAndGrad, check_value
+torch.set_default_dtype(torch.float64)
+# float32
+# average over loss[multi backward] 	 0.000767876161262393 6.303839206695557
+# average over loss[one backward] 	 0.0007678759866394103 6.2055909633636475
 
+#float64
+# average over loss[multi backward] 	 1.9961114481237086e-06 6.716878890991211
+# average over loss[one backward] 	 1.9961114481236662e-06 7.701658248901367
+
+# float16
+# average over loss[multi backward] 	 8.845329284667969e-05 6.699422836303711
+# average over loss[one backward] 	 8.857250213623047e-05 6.65080714225769
 
 def getGrad(optimizer):
     grads = []
@@ -26,62 +35,32 @@ def getGrad(optimizer):
 
 def train(model, device, train_loader, optimizer):
     model.train()
+    begin = time.time()
+    optimizer.zero_grad()
     for batch_idx, (data, target) in enumerate(train_loader):
         data, target = data.to(device), target.to(device)
-        optimizer.zero_grad()
+
         output = model(data)
         loss = F.nll_loss(output, target)
         loss.backward()
 
-        true_gradient = getGrad(optimizer)
-        print("true \t",true_gradient[0][0][0][0].item())
+    gradient = getGrad(optimizer)
+    print("average over loss[multi backward] \t", gradient[0][0][0][0].item(), time.time()-begin)
 
+    a = 0
+    begin= time.time()
+    optimizer.zero_grad()
+    for batch_idx, (data, target) in enumerate(train_loader):
+        data, target = data.to(device), target.to(device)
 
-        itl = int(train_loader.batch_size / 5)
-        a =0
-        grad_groupslist = []
-        for i in range(5):
-            optimizer.zero_grad()
-            data_ , target_ = data[itl*i:itl*i+itl],  target[itl*i:itl*i+itl]
-            output = model(data_)
-            loss_ = F.nll_loss(output, target_)
-            loss_.backward()
+        output = model(data)
+        loss = F.nll_loss(output, target)
+        a+=loss
+    a.backward()
 
-            g = getGrad(optimizer)
-            grad_groupslist.append(g)
-            # a += g[0][0][0][0].item()
-            # print(loss_.item(), a)
+    gradient = getGrad(optimizer)
+    print("average over loss[one backward] \t", gradient[0][0][0][0].item(), time.time()-begin)
 
-        for grad_groups in grad_groupslist[:-1]:
-            for gidx, grad_group in enumerate(grad_groups):
-                for idx, grad in enumerate(grad_groupslist[-1][gidx]):
-                    grad += grad_group[idx]
-
-        for grad_group in grad_groupslist[-1]:
-            for grad in grad_group:
-                grad /= 5
-        print('average over gradient \t',grad_groupslist[-1][0][0][0][0].item())
-
-        print("#######################")
-        optimizer.zero_grad()
-        loss_a =0
-        for i in range(5):
-
-            data_ , target_ = data[itl*i:itl*i+itl],  target[itl*i:itl*i+itl]
-            # print(len(data_))
-            output = model(data_)
-            loss_ = F.nll_loss(output, target_)
-            loss_a += loss_
-
-        loss_a.backward()
-        # g = getGrad(optimizer)
-        # print(loss_.item(), g[0][0][0][0].item())
-
-
-        gradient = getGrad(optimizer)
-        print("average over loss \t", gradient[0][0][0][0].item()/5)
-
-        return None
 
 
 
@@ -106,7 +85,7 @@ def main():
 
     train_kwargs = {'batch_size': args.batch_size}
     if use_cuda:
-        cuda_kwargs = {'num_workers': 0,
+        cuda_kwargs = {'num_workers': 1,
                        'pin_memory': True,
                        'shuffle': True}
         train_kwargs.update(cuda_kwargs)

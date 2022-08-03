@@ -3,9 +3,9 @@ import os.path
 
 import torch
 from net import FCNet as Net
-
 import torch.optim as optim
 from torchvision import datasets, transforms
+from torch.optim.lr_scheduler import StepLR
 from ssp import SSP
 from utils import train, test, train_GD
 
@@ -30,10 +30,9 @@ def main():
                         help='disables CUDA training')
     parser.add_argument('--seed', type=int, default=1, metavar='S',
                         help='random seed (default: 1)')
-    parser.add_argument('--ssp', action='store_true', default=False, help='step size planning')
+    parser.add_argument('--gd', action='store_true', default=False, help='replace step size planning with gd')
     parser.add_argument('--path', type=str, default="loss/", metavar='F', help='realtive loss file path')
     parser.add_argument('--optimizer', type=str, default="sgd", metavar='O', help='optimizer')
-    parser.add_argument('--noise', action='store_true', default=False,  help='noise.')
     parser.add_argument('--bufferlength', type=int, default=3, metavar='K', help='bufferlength')
     parser.add_argument('--log-interval', type=int, default=200, metavar='N',
                         help='how many batches to wait before logging training status')
@@ -88,15 +87,12 @@ def main():
     # optimizer = optim.RMSprop()
 
     ssp = None
-    if args.ssp:
+    if args.gd:
         ssp = SSP()
-        fname = 'ssp-'+fname + '-K_'+str(args.bufferlength)
-
-        if args.noise:
-            fname += "-noise"
+        fname = 'gd-'+fname + '-K_'+str(args.bufferlength)
 
     fpath = "loss/0803/"
-    os.makedirs(fpath+'alpha', exist_ok=True)
+    os.makedirs(fpath, exist_ok=True)
     print(fpath+fname)
     f = open(fpath+fname, "w")
     # fc = open("loss/ssp+sgd_in_epoch_loss_compare","w")
@@ -106,13 +102,11 @@ def main():
         train_loss = train_GD(args, model, device, train_loader, optimizer, epoch)
         test_loss = test(model, device, test_loader)
 
-        # step size planning  between consequcence 3 epoch parameter
-        extra = 0
-        if args.ssp:
-            extra = ssp.step_with_true_gradient(model, device, dataset_train, optimizer,epoch, fpath, K=args.bufferlength, noise=args.noise)
+        if args.gd:
+            # step size planning  between consequcence 3 epoch parameter
+            ssp.test_gradient(model, device, dataset_train, optimizer, K=args.bufferlength, lr=args.lr)
 
-
-        f.write(str([train_loss, test_loss, extra])+'\n')
+        f.write(str([train_loss, test_loss])+'\n')
 
         # f.write(str(train_loss) + '\n')
 
