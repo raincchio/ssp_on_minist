@@ -7,7 +7,7 @@ from net import FCNet as Net
 import torch.optim as optim
 from torchvision import datasets, transforms
 from ssp import SSP
-from utils import train, test, train_GD
+from utils import train_EP, test, train_GD
 
 def main():
     # Training settings
@@ -103,7 +103,7 @@ def main():
 
     for epoch in range(1, args.epochs+1):
         # use any grdaient descent method for optimizer
-        train_loss = train_GD(args, model, device, train_loader, optimizer, epoch)
+        train_loss = train_EP(args, model, device, train_loader, optimizer, epoch)
         test_loss = test(model, device, test_loader)
 
         # step size planning  between consequcence 3 epoch parameter
