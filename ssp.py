@@ -1,3 +1,5 @@
+import time
+
 import torch
 # from torch.optim import optimizer
 from collections import defaultdict
@@ -9,7 +11,6 @@ from copy import deepcopy
 
 class SSP(object):
     def __init__(self):
-        self.state = defaultdict(dict)
         self.Buffer1 = []
         self.Buffer2 = []
         self.Buffer = []
@@ -25,7 +26,7 @@ class SSP(object):
             grads_ = []
             for p in group['params']:
                 if p.grad is not None:
-                    grads_.append(self.state[p]['exp_avg_grad'])
+                    grads_.append(optimizer.state[p]['exp_avg_grad'])
             grads.append(grads_)
 
         return grads
@@ -114,78 +115,29 @@ class SSP(object):
                     state_steps.append(state['step'])
         return loss
 
-    def step_with_true_gradient(self, model, device, dataset, train_kwargs, optimizer, epoch, K=2, sampledata=False,
+    def step_with_true_gradient(self, model, device, dataset, optimizer, epoch, fpath, K=2,
                                 noise=False):
         # one step sgd
-        if sampledata:
-            grad_groupslist = []
-            train_kwargs_ = deepcopy(train_kwargs)
-            train_kwargs_["batch_size"] = 10000
-            train_loader = torch.utils.data.DataLoader(dataset, **train_kwargs_)
-            for batch_idx, (data, target) in enumerate(train_loader):
-                data, target = data.to(device), target.to(device)
-                optimizer.zero_grad()
-                output = model(data)
-                loss = F.nll_loss(output, target)
-                loss.backward()
-                grad_groupslist.append(self.getGrad(optimizer))
+        train_kwargs ={
+            "batch_size": 15000,
+            'num_workers': 0,
+            'pin_memory': False,
+            'shuffle': False
+        }
+        dataloader = torch.utils.data.DataLoader(dataset, **train_kwargs)
 
-                # if len(grad_groupslist)==samplesize:
-                # print(len(grad_groupslist),samplesize)
-                # break
-            # print(len(grad_groupslist), samplesize)
-            # assert  == samplesize, "error, check count variable"
-            samplesize = len(grad_groupslist)
-
-            for grad_groups in grad_groupslist[:-1]:
-                for gidx, grad_group in enumerate(grad_groups):
-                    for idx, grad in enumerate(grad_groupslist[-1][gidx]):
-                        grad += grad_group[idx]
-
-            for grad_group in grad_groupslist[-1]:
-                for grad in grad_group:
-                    grad /= samplesize
-
-            true_grads = grad_groupslist[-1]
-            # compute average
-
-        else:
-            train_kwargs['batch_size'] = len(dataset)
-            train_loader = torch.utils.data.DataLoader(dataset, **train_kwargs)
-            data, target = next(iter(train_loader))
+        optimizer.zero_grad()
+        loss = 0
+        for data, target in dataloader:
             data, target = data.to(device), target.to(device)
-            optimizer.zero_grad()
             output = model(data)
-            loss = F.nll_loss(output, target)
-            loss.backward()
-            true_grads = self.getGrad(optimizer)
+            loss += F.nll_loss(output, target)
+        (loss/len(dataloader)).backward()
 
+        true_grads = self.getGrad(optimizer)
         params = self.getWeight(optimizer)
 
-        # self.Buffer.append([params, true_grads])
-        #
-        # if len(self.Buffer2) == K*2:
-        #
-        #     grads = self.Buffer[-1]
-        #
-        #     with torch.no_grad():
-        #
-        #     # compute alpha from buffer
-        #         numerator = U.compute_numer(self.Buffer[:K], self.Buffer[K:])
-        #         denominator = U.compute_denom(self.Buffer[:K])
-        #
-        #         alpha = U.check_value(numerator, denominator)
-        #
-        #         # update parameters
-        #         # for pg in zipparams:
-        #         params = self.getWeight(optimizer,copymethod='ref')
-        #         for idx_pg in range(len(params)):
-        #             for i, param in enumerate(params[idx_pg]):
-        #                 param.add_(-alpha[idx_pg][i]*grads[idx_pg][i])
-        #
-        #         self.Buffer.pop(0)
-
-        if epoch <= K:
+        if len(self.Buffer1) < K:
             self.Buffer1.append([params, true_grads])
         else:
             self.Buffer2.append([params, true_grads])
@@ -204,35 +156,69 @@ class SSP(object):
 
                 # update parameters
                 # note: using params in the optimizer
+
                 params = self.getWeight(optimizer,copymethod='ref')
                 for idx_pg in range(len(params)):
                     for i, param in enumerate(params[idx_pg]):
                         param.add_(-alpha[idx_pg][i]*grads[idx_pg][i])
 
-
-                # params = self.getWeight(optimizer, copymethod='ref')
-                # for idx_pg in range(len(params)):
-                #     for i, param in enumerate(params[idx_pg]):
-                #         param.add_(grads[idx_pg][i], alpha=-0.01)
+                # torch.save(alpha, fpath+'alpha/alpha-'+str(epoch))
 
             self.Buffer1 = self.Buffer2 + []
+            # self.Buffer1.clear()
             self.Buffer2.clear()
             print("do step size planning")
 
-    def step_with_exp_average_gradient(self, batch_idx, optimizer, buffersize=2):
+    def test_gradient(self, model, device, dataset, optimizer, K=2, lr=0.01):
+
+
+        if len(self.Buffer1) < K:
+            self.Buffer1.append([1])
+        else:
+            self.Buffer2.append([1])
+
+        if len(self.Buffer2) == K:
+
+            train_kwargs = {
+                "batch_size": 15000,
+                'num_workers': 0,
+                'pin_memory': False,
+                'shuffle': False
+            }
+            dataloader = torch.utils.data.DataLoader(dataset, **train_kwargs)
+            for data, target in dataloader:
+                data, target = data.to(device), target.to(device)
+                optimizer.zero_grad()
+                output = model(data)
+                loss = F.nll_loss(output, target)
+                loss.backward()
+
+            grads = self.getGrad(optimizer)
+            #
+            with torch.no_grad():
+
+                params = self.getWeight(optimizer, copymethod='ref')
+                for idx_pg in range(len(params)):
+                    for i, param in enumerate(params[idx_pg]):
+                        param.add_(grads[idx_pg][i], alpha=-lr)
+
+            self.Buffer2.clear()
+            print("do gd instead of step size planning")
+    def step_with_stochastic_gradient(self, model, data, batch_idx, optimizer, buffersize=2, exp_average=False):
         # one step sgd
         params = self.getWeight(optimizer)
+        # stochastic grads
         grads = self.getGrad(optimizer)
         # resotre param
-
-        U.update_exp_average_grad(optimizer)
-        average_grads = self.getExpGrad(optimizer)
+        if exp_average:
+            U.update_exp_average_grad(optimizer)
+            grads = self.getExpGrad(optimizer)
 
         with torch.no_grad():
-            if batch_idx < buffersize:
-                self.Buffer1.append([params, average_grads])
+            if len(self.Buffer1) < buffersize:
+                self.Buffer1.append([params, grads])
             else:
-                self.Buffer2.append([params, average_grads])
+                self.Buffer2.append([params, grads])
 
             if len(self.Buffer2) == buffersize:
                 # compute
@@ -244,8 +230,12 @@ class SSP(object):
                 alpha = U.check_value(numerator, denominator)
 
                 # update parameters
-                for i, param in enumerate(params):
-                    param.add_(-alpha[i] * grads[i])
+                params = self.getWeight(optimizer, copymethod='ref')
+                for idx_pg in range(len(params)):
+                    for i, param in enumerate(params[idx_pg]):
+                        param.add_(-alpha[idx_pg][i] * grads[idx_pg][i])
 
                 self.Buffer1 = self.Buffer2 + []
                 self.Buffer2.clear()
+                print('do step size planing')
+
