@@ -3,3 +3,4 @@ ssp_loss
 sgd_loss
 ssp_in_epoch_loss
 *loss
+.idea/deployment.xml
